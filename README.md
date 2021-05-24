@@ -1,3 +1,3 @@
 # DEMO
 
-https://cranky-varahamihira-919811.netlify.app/todolist
+https://todolist-ex.netlify.app/todolist

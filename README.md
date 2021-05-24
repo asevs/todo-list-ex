@@ -1,3 +1,3 @@
 # DEMO
 
-https://todolist-ex.netlify.app/todolist
+https://todolist-ex.netlify.app/

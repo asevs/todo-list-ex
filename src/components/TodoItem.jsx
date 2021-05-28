@@ -1,36 +1,108 @@
-import React from 'react';
+import React, { useState } from 'react';
 import PropTypes from 'prop-types';
 import { useHistory } from 'react-router-dom';
 import { useRecoilState } from 'recoil';
 import { todoListState } from '../atoms/atoms';
-import { Grid, Checkbox, Paragraph, IconButton, Image } from 'theme-ui';
+import {
+  Grid,
+  Checkbox,
+  Paragraph,
+  IconButton,
+  Image,
+  Input,
+  Box,
+} from 'theme-ui';
 import deleteIcon from '../assets/icons/deleteIcon.svg';
+import editIcon from '../assets/icons/editIcon.svg';
+import { ACCESS_TOKEN, API_URL } from '../api';
 
 export const TodoItem = ({ todo }) => {
   const [todoList, setTodoList] = useRecoilState(todoListState);
+  const [title, setTitle] = useState(todo.title);
+  const [isEditTodo, setIsEditTodo] = useState(false);
   const history = useHistory();
-  const toggleItemCompletion = (todo) => {
-    setTodoList(
-      replaceItemAtIndex(todoList, getIndex(todoList, todo), {
-        ...todo,
-        completed: !todo.completed,
-        updated_at: new Date(),
-      })
-    );
+  const toggleTodoCompletion = async () => {
+    try {
+      const response = await fetch(`${API_URL}/todos/${todo.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: ACCESS_TOKEN,
+        },
+        body: JSON.stringify({
+          ...todo,
+          completed: !todo.completed,
+          updated_at: new Date(),
+        }),
+      }).then((res) => res.json());
+
+      setTodoList(
+        replaceItemAtIndex(todoList, getIndex(todoList, response.data), {
+          ...todo,
+          completed: !todo.completed,
+          updated_at: new Date(),
+        })
+      );
+    } catch (e) {
+      console.error(e);
+    }
   };
 
-  const redirectToDetailsPage = (id) => {
-    history.push(`/details/${id}`);
+  const toggleEditTodo = () => {
+    setIsEditTodo(!isEditTodo);
   };
 
-  const deleteItem = (todo) => {
-    setTodoList(removeItemAtIndex(todoList, getIndex(todoList, todo)));
+  const editTodo = async (e) => {
+    e.preventDefault();
+    if (title) {
+      try {
+        const response = await fetch(`${API_URL}/todos/${todo.id}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: ACCESS_TOKEN,
+          },
+          body: JSON.stringify({
+            ...todo,
+            title: title,
+            updated_at: new Date(),
+          }),
+        }).then((res) => res.json());
+
+        setTodoList(
+          replaceItemAtIndex(todoList, getIndex(todoList, response.data), {
+            ...todo,
+            title: title,
+            updated_at: new Date(),
+          })
+        );
+        toggleEditTodo();
+      } catch (e) {
+        console.error(e);
+      }
+    }
+  };
+
+  const redirectToDetailsPage = () => {
+    history.push(`/details/${todo.id}`);
+  };
+
+  const deleteTodo = async () => {
+    await fetch(`${API_URL}/todos/${todo.id}`, {
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: ACCESS_TOKEN,
+      },
+    })
+      .then((res) => res.json())
+      .then(setTodoList(removeItemAtIndex(todoList, getIndex(todoList, todo))));
   };
 
   return (
     <Grid
       gap={2}
-      columns={[3, '0fr 1fr 0fr']}
+      columns={[4, '0fr 1fr 0fr 0fr']}
       padding="8px"
       sx={{
         alignItems: 'center',
@@ -49,18 +121,25 @@ export const TodoItem = ({ todo }) => {
             },
           }}
           defaultChecked={todo.completed}
-          onClick={() => toggleItemCompletion(todo)}
+          onClick={toggleTodoCompletion}
         />
       </label>
-      <Paragraph
-        onClick={() => redirectToDetailsPage(todo.id)}
-        sx={{ textAlign: 'left' }}
-      >
-        {todo.title}
-      </Paragraph>
+      {isEditTodo ? (
+        <Box as="form" onSubmit={editTodo}>
+          <Input
+            type="text"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            placeholder="Edit todo"
+          />
+        </Box>
+      ) : (
+        <Paragraph onClick={redirectToDetailsPage} sx={{ textAlign: 'left' }}>
+          {todo.title}
+        </Paragraph>
+      )}
       <IconButton
         sx={{
-          margin: '0 0 0 auto',
           width: '25px',
           height: '25px',
           padding: '5px',
@@ -69,7 +148,21 @@ export const TodoItem = ({ todo }) => {
             padding: '0',
           },
         }}
-        onClick={() => deleteItem(todo)}
+        onClick={toggleEditTodo}
+      >
+        <Image src={editIcon} />
+      </IconButton>
+      <IconButton
+        sx={{
+          width: '25px',
+          height: '25px',
+          padding: '5px',
+          '&:hover': {
+            cursor: 'pointer',
+            padding: '0',
+          },
+        }}
+        onClick={deleteTodo}
       >
         <Image src={deleteIcon} />
       </IconButton>
@@ -86,7 +179,7 @@ function removeItemAtIndex(arr, index) {
 }
 
 function getIndex(todoList, todo) {
-  return todoList.findIndex((listItem) => listItem === todo);
+  return todoList.findIndex((listItem) => listItem.id === todo.id);
 }
 
 TodoItem.propTypes = {

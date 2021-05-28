@@ -1,14 +1,19 @@
 import { atom, selector } from 'recoil';
+import { ACCESS_TOKEN, API_URL, USER_ID } from '../api';
 export const fetchTodosSelector = selector({
   key: 'fetchTodosSelector',
   get: async () => {
-    const response = await fetch('https://gorest.co.in/public-api/todos').then(
-      (response) => response.json()
-    );
+    const response = await fetch(
+      `${API_URL}/users/${USER_ID}/todos?access-token=${ACCESS_TOKEN}`
+    ).then((response) => response.json());
     return response.data;
   },
 });
 
+export const todoState = atom({
+  key: 'todoState',
+  default: '',
+});
 export const todoListState = atom({
   key: 'todoListState',
   default: fetchTodosSelector,
@@ -32,17 +37,9 @@ export const todoListFilterState = atom({
 export const addTodoSelector = selector({
   key: 'addTodoSelector',
   get: ({ get }) => get(todoListState),
-  set: ({ get, set }, newValue) =>
-    set(todoListState, [
-      ...get(todoListState),
-      {
-        id: getId(),
-        title: newValue,
-        completed: false,
-        updated_at: new Date(),
-        created_at: new Date(),
-      },
-    ]),
+  set: ({ get, set }, newValue) => {
+    set(todoListState, [...get(todoListState), newValue]);
+  },
 });
 
 export const filteredTodoListState = selector({
@@ -73,11 +70,6 @@ export const todoListStatsState = selector({
     };
   },
 });
-
-let id = 1000;
-function getId() {
-  return id++;
-}
 
 function searchingFor(searchTodo) {
   return function (todo) {
